@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "Qualivex — Turn conversations into customers",
-  description: "An AI-powered lead qualification and appointment workflow for ambitious businesses."
+  title: "Qualivex — The revenue workflow for modern teams",
+  description: "Qualivex helps teams capture, qualify and convert business enquiries with a secure sales workspace."
 };
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <html lang="en"><body>{children}</body></html>;
