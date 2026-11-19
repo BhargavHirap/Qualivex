@@ -104,15 +104,33 @@ using (exists (select 1 from public.workspace_members m where m.workspace_id=id 
 with check (exists (select 1 from public.workspace_members m where m.workspace_id=id and m.user_id=(select auth.uid()) and m.role in ('owner','admin')));
 
 -- Users can add themselves as the initial owner only when they created the workspace.
+create schema if not exists private;
+create or replace function private.can_join_created_workspace(target_workspace_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select exists (
+    select 1 from public.workspaces w
+    where w.id = target_workspace_id
+      and w.created_by = (select auth.uid())
+  );
+$;
+revoke all on function private.can_join_created_workspace(uuid) from public;
+grant usage on schema private to authenticated;
+grant execute on function private.can_join_created_workspace(uuid) to authenticated;
+
 drop policy if exists "user joins workspace they created" on public.workspace_members;
 create policy "user joins workspace they created" on public.workspace_members for insert to authenticated
-with check (user_id=(select auth.uid()) and role='owner' and exists (select 1 from public.workspaces w where w.id=workspace_id and w.created_by=(select auth.uid())));
+with check (user_id=(select auth.uid()) and role='owner' and private.can_join_created_workspace(workspace_id));
 drop policy if exists "members read workspace membership" on public.workspace_members;
 create policy "members read workspace membership" on public.workspace_members for select to authenticated
-using (exists (select 1 from public.workspace_members mine where mine.workspace_id=workspace_id and mine.user_id=(select auth.uid())));
+using (user_id=(select auth.uid()));
 drop policy if exists "admins manage membership" on public.workspace_members;
 create policy "admins manage membership" on public.workspace_members for delete to authenticated
-using (exists (select 1 from public.workspace_members mine where mine.workspace_id=workspace_id and mine.user_id=(select auth.uid()) and mine.role='owner'));
+using (user_id=(select auth.uid()) and role='owner');
 
 -- Workspace membership is the tenant boundary for all business data.
 drop policy if exists "workspace members read leads" on public.leads;
