@@ -111,13 +111,13 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $function$
   select exists (
     select 1 from public.workspaces w
     where w.id = target_workspace_id
       and w.created_by = (select auth.uid())
   );
-$;
+$function$;
 revoke all on function private.can_join_created_workspace(uuid) from public;
 grant usage on schema private to authenticated;
 grant execute on function private.can_join_created_workspace(uuid) to authenticated;
