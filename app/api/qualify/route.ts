@@ -12,6 +12,8 @@ export async function POST(request:Request){
  try{
   const supabase=await createClient();const {data:{user},error:authError}=await supabase.auth.getUser();if(authError||!user)return NextResponse.json({error:"Sign in to qualify leads."},{status:401});
   const {data:membership,error:memberError}=await supabase.from("workspace_members").select("workspace_id").eq("user_id",user.id).limit(1).maybeSingle();if(memberError)throw memberError;if(!membership)return NextResponse.json({error:"Create a workspace first."},{status:409});
+  const {count,error:quotaError}=await supabase.from("qualification_events").select("id",{count:"exact",head:true}).eq("workspace_id",membership.workspace_id).gte("created_at",new Date(Date.now()-60*60*1000).toISOString());
+  if(quotaError)throw quotaError;if((count??0)>=50)return NextResponse.json({error:"Workspace qualification limit reached for this hour. Try again later."},{status:429});
   const body=await request.json();const message=typeof body.message==="string"?body.message.trim().slice(0,5000):"";if(message.length<10)return NextResponse.json({error:"Enter at least 10 characters of enquiry context."},{status:400});
   let result=rules(message),model="rules-v1";
   if(process.env.OPENAI_API_KEY){
