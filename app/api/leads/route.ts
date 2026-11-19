@@ -3,10 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request:Request){
  try{const supabase=await createClient();const {data:{user},error:a}=await supabase.auth.getUser();if(a||!user)return NextResponse.json({error:"Unauthorized"},{status:401});
  const {data:membership,error:m}=await supabase.from("workspace_members").select("workspace_id").eq("user_id",user.id).limit(1).maybeSingle();if(m)throw m;if(!membership)return NextResponse.json({leads:[],workspace:null});
- const url=new URL(request.url);const search=url.searchParams.get("q")?.slice(0,100);const status=url.searchParams.get("status");
  let q=supabase.from("leads").select("*").eq("workspace_id",membership.workspace_id).order("created_at",{ascending:false}).limit(100);
- if(search)q=q.or(`full_name.ilike.%${search.replace(/[%_]/g,"") }%,company.ilike.%${search.replace(/[%_]/g,"")}%,email.ilike.%${search.replace(/[%_]/g,"")}%`);
- if(status&&["new","qualified","nurture","disqualified","contacted","won","lost"].includes(status))q=q.eq("status",status);
  const {data,error}=await q;if(error)throw error;return NextResponse.json({leads:data,workspace:membership.workspace_id});
  }catch(e:any){return NextResponse.json({error:e.message||"Could not load leads"},{status:500});}
 }
