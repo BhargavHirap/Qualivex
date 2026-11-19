@@ -4,7 +4,7 @@
 
 Qualivex is building a secure, AI-assisted workspace that helps teams capture, qualify, manage and convert inbound prospects. It is designed around a simple principle: every recommendation should be explainable, every action should be auditable, and customer data should remain isolated by workspace.
 
-## Current build — v0.2.0
+## Current build — v0.3.0
 
 Implemented in the repository:
 - Premium product website and responsive workspace UI.
@@ -24,7 +24,7 @@ This repository is now structured as a real application, but it is **not product
 Do not treat the rules-only qualifier as an LLM. The interface reports which mode produced each result.
 
 ## Stack
-- Next.js 14 App Router, React and TypeScript
+- Next.js 16 App Router, React 19 and TypeScript
 - Supabase Auth + PostgreSQL + Row Level Security
 - Vercel deployment
 - OpenAI Chat Completions API (optional; server-side only)
