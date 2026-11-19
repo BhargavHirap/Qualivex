@@ -1,70 +1,85 @@
 # Qualivex
 
-**The revenue workflow for modern service businesses.**
+**AI-assisted lead qualification and booking handoff for high-ticket service businesses.**
 
-Qualivex is building a secure, AI-assisted workspace that helps teams capture, qualify, manage and convert inbound prospects. It is designed around a simple principle: every recommendation should be explainable, every action should be auditable, and customer data should remain isolated by workspace.
+Qualivex is a multi-tenant revenue workflow product. It captures enquiries, qualifies them against explicit business rules, maintains conversation state, routes unsuitable or sensitive enquiries to humans, and hands qualified prospects to a configured calendar booking page.
 
-## Current build — v0.3.0
+## Implemented in the repository
 
-Implemented in the repository:
-- Premium product website and responsive workspace UI.
-- Supabase Auth sign-up and sign-in experience.
-- Multi-tenant database schema for workspaces, memberships, leads, appointments and qualification events.
-- Row-level security policies designed to isolate workspace data.
-- Persistent lead create/read/update/delete flows.
-- Lead pipeline search, status management and real database metrics (no fabricated sample records).
-- Qualification API with a provider-ready OpenAI integration and an explicit rules-only fallback.
-- Qualification history stored without retaining the raw enquiry text by default.
-- Health endpoint that reports whether database and AI credentials are configured.
+- Supabase Auth and workspace-scoped data model with Row Level Security.
+- Persistent lead pipeline with create/read/update/delete, search, status updates and CSV export.
+- Configurable qualification profile per workspace: service, target service, budget tier, timeline, approved FAQs, alternative resource, calendar link and timezone.
+- AI Studio page with a persistent one-question-at-a-time conversation tester.
+- Groq-compatible conversational AI adapter with JSON output and a rules fallback.
+- Server-side qualification gate: an LLM cannot mark a prospect qualified unless all required evidence and contact details are present.
+- Sticky state merge: an omitted/null model value does not erase previously confirmed information.
+- Disqualification and human-handoff paths.
+- Conversation and message persistence with workspace RLS.
+- Calendar handoff through a workspace-configured Cal.com/booking URL; no slot is claimed to be available unless the calendar provider confirms it.
+- Mobile-first short-message prompt behaviour and channel metadata foundation.
 
-## Important activation requirements
+## Activation status — read before pitching
 
-This repository is now structured as a real application, but it is **not production-live until a dedicated Supabase project is connected and the migration is applied**. AI reasoning requires an OpenAI API key. Calendar, WhatsApp, email, billing and inbound website capture are not yet connected.
+The latest source is committed to GitHub, but this is **not yet a production-live service**. A dedicated Supabase project has not been provisioned, migrations have not been applied, production environment variables are not configured, and the latest source has not been confirmed deployed. Do not send real prospect data to it until these steps and the security checks are complete.
 
-Do not treat the rules-only qualifier as an LLM. The interface reports which mode produced each result.
+The current AI Studio supports authenticated web conversations. WhatsApp and Instagram DM are **not live integrations yet**: they require a Meta app, business-account permissions, webhook verification, approved messaging permissions/templates where applicable, and production tokens. Calendar is currently a booking-link handoff, not a live availability query or confirmed appointment API. Cal.com/Google Calendar OAuth, booking webhooks, reminders and attendance verification remain integration work.
+
+## Zero-upfront operating model
+
+- The app code is designed to use free tiers where available.
+- Groq free-tier availability, limits and commercial terms can change; check the provider's current terms before a client pilot.
+- Cal.com and Supabase free plans have usage/feature limits. Free-tier availability is not a guarantee of permanent zero cost.
+- Do not promise a client real-time calendar booking until the selected calendar provider is connected and its booking confirmation webhook is verified.
+- Do not charge per-showed-qualified-call until attendance is independently confirmed and the pilot agreement defines disputes, duplicates and attribution.
 
 ## Stack
-- Next.js 16 App Router, React 19 and TypeScript
+
+- Next.js App Router, React and TypeScript
 - Supabase Auth + PostgreSQL + Row Level Security
+- Groq-compatible API for optional conversational reasoning; rules fallback
+- Cal.com booking-link handoff configured per workspace
 - Vercel deployment
-- OpenAI Chat Completions API (optional; server-side only)
 
-## Setup
+## Setup sequence
 
-1. Create a dedicated Supabase project for Qualivex.
-2. Apply `supabase/migrations/20261119000100_qualivex_core.sql` to that project.
-3. In Vercel, configure:
+1. Provision a **dedicated** Supabase project for Qualivex. Do not reuse the MUMOVE or unrelated project.
+2. Apply migrations in order:
+   - `supabase/migrations/20261119000100_qualivex_core.sql`
+   - `supabase/migrations/20261119000200_qualivex_conversations.sql`
+3. Configure Vercel encrypted environment variables:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-   - `OPENAI_API_KEY` (optional until AI qualification is enabled)
-   - `OPENAI_MODEL` (optional; defaults to `gpt-4.1-mini`)
-4. Redeploy the Vercel project.
-5. Configure Supabase Auth email confirmation and allowed redirect URLs for the production domain.
+   - `GROQ_API_KEY` (optional; rules mode remains available without it)
+   - `GROQ_MODEL` (optional)
+4. Configure Supabase Auth site URL and redirect allowlist for the production domain.
+5. Deploy the current main branch and verify health, auth, RLS, profile save, conversation persistence and calendar handoff.
+6. In the authenticated app, open **AI Studio**, configure business rules and an HTTPS booking URL, save, and test qualification/disqualification/handoff scenarios.
+7. Before a live client pilot, add privacy notice, retention rules, explicit consent, Meta channel approval if used, and a signed pilot agreement.
 
 For local development, copy `.env.example` to `.env.local`, install dependencies and run `npm run dev`.
 
-## Security baseline
-- No service-role key is used in the browser.
-- Authenticated server routes verify the user session.
-- Database RLS is the tenant boundary; API filtering is not treated as authorization.
-- Qualification events store score/signals/model, not the full raw prospect message by default.
-- AI output is treated as advisory; humans remain responsible for qualification and outreach.
-- Secrets belong in Vercel encrypted environment variables, never Git.
+## Security and operational rules
 
-## Product principles
-1. Evidence over invented certainty.
-2. Human approval for high-impact actions and outbound communication.
-3. Explainable scoring and model provenance.
-4. Tenant isolation and data minimisation by default.
-5. Measure outcomes (qualified, attended, won), not vanity activity.
+- Never expose Supabase service-role/secret keys in the browser.
+- Never store raw enquiry text in qualification analytics by default; conversation messages are persisted to support context, so disclose this clearly and set a retention policy before production.
+- Treat model output as untrusted. The server independently enforces qualification status.
+- Never invent price, medical/legal/financial claims, calendar availability or guaranteed outcomes.
+- Human handoff is required for media/voice notes, complaints, requests for a person and unsupported high-stakes questions.
+- Use provider signatures and event-id deduplication before enabling external webhooks.
+- Keep outbound WhatsApp/Instagram messaging compliant with opt-in and platform rules.
 
-## Roadmap
-- Configurable ICPs, qualification rubrics and custom scoring weights.
-- Website chat and lead intake with spam controls and consent.
-- Calendar availability, conflict-safe booking and reminders.
-- WhatsApp Business and email channels with opt-in and template compliance.
-- Funnel attribution, revenue reporting and experiment measurement.
-- Team roles, audit logs, billing, observability and operational controls.
+## Product proof
+
+Qualivex is not objectively “100x better” than mature CRM and conversational AI competitors today. Its intended differentiation is explainable qualification, strict server-side gates, human handoff, vertical-specific playbooks and an outcome-based pilot model. Prove performance with real pilot data: median first-response time, qualification precision, qualified-to-booked rate, show rate, attended qualified calls and client revenue attribution.
+
+## Current limitations
+
+- No WhatsApp/Instagram production webhook sender yet.
+- No calendar free/busy lookup, OAuth integration or appointment confirmation webhook yet.
+- No automated email/SMS reminders or no-show verification.
+- No billing, team invitations, role management or client-facing analytics yet.
+- Deployment and database activation are pending.
 
 ## License
+
 All rights reserved until a license is selected.
