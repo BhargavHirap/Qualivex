@@ -94,7 +94,7 @@ alter table public.qualification_events enable row level security;
 -- Workspace owners may create and read their workspace.
 drop policy if exists "workspace owner reads workspace" on public.workspaces;
 create policy "workspace owner reads workspace" on public.workspaces for select to authenticated
-using (exists (select 1 from public.workspace_members m where m.workspace_id=id and m.user_id=(select auth.uid())));
+using (created_by=(select auth.uid()) or exists (select 1 from public.workspace_members m where m.workspace_id=id and m.user_id=(select auth.uid())));
 drop policy if exists "authenticated user creates own workspace" on public.workspaces;
 create policy "authenticated user creates own workspace" on public.workspaces for insert to authenticated
 with check (created_by=(select auth.uid()));
@@ -142,7 +142,7 @@ with check (created_by=(select auth.uid()) and exists (select 1 from public.work
 drop policy if exists "workspace members update leads" on public.leads;
 create policy "workspace members update leads" on public.leads for update to authenticated
 using (exists (select 1 from public.workspace_members m where m.workspace_id=leads.workspace_id and m.user_id=(select auth.uid())))
-with check (exists (select 1 from public.workspace_members m where m.workspace_id=leads.workspace_id and m.user_id=(select auth.uid())));
+with check (created_by=(select auth.uid()) and exists (select 1 from public.workspace_members m where m.workspace_id=leads.workspace_id and m.user_id=(select auth.uid())));
 drop policy if exists "workspace admins delete leads" on public.leads;
 create policy "workspace admins delete leads" on public.leads for delete to authenticated
 using (exists (select 1 from public.workspace_members m where m.workspace_id=leads.workspace_id and m.user_id=(select auth.uid()) and m.role in ('owner','admin')));
