@@ -165,3 +165,27 @@ grant select, insert, delete on public.workspace_members to authenticated;
 grant select, insert, update, delete on public.leads to authenticated;
 grant select, insert, update, delete on public.appointments to authenticated;
 grant select, insert on public.qualification_events to authenticated;
+
+-- Atomic workspace bootstrap: both records commit or roll back together.
+create or replace function public.create_workspace(workspace_name text, workspace_slug text)
+returns table (id uuid, name text, slug text)
+language plpgsql
+security invoker
+set search_path = ''
+as $workspace$
+declare
+  created_workspace public.workspaces%rowtype;
+begin
+  if (select auth.uid()) is null then
+    raise exception 'Authentication required';
+  end if;
+  insert into public.workspaces(name, slug, created_by)
+  values (workspace_name, workspace_slug, (select auth.uid()))
+  returning * into created_workspace;
+  insert into public.workspace_members(workspace_id, user_id, role)
+  values (created_workspace.id, (select auth.uid()), 'owner');
+  return query select created_workspace.id, created_workspace.name, created_workspace.slug;
+end;
+$workspace$;
+revoke all on function public.create_workspace(text,text) from public;
+grant execute on function public.create_workspace(text,text) to authenticated;
